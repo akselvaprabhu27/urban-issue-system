@@ -1,8 +1,16 @@
 import { useEffect, useState } from "react";
 import { db } from "../config/firebase";
-import { collection, onSnapshot, doc, updateDoc,getDocs, query, orderBy } from "firebase/firestore";
+import {
+  collection,
+  onSnapshot,
+  doc,
+  updateDoc,
+  getDocs,
+  query,
+  orderBy,
+  getDoc
+} from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
-import { getDoc } from "firebase/firestore";
 import toast from "react-hot-toast";
 
 function Admin() {
@@ -16,25 +24,23 @@ function Admin() {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-        const data = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+      const data = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
 
-        const pendingOnly = data.filter(
-          (item) => item.status === "Pending"
-        );
+      const pendingOnly = data.filter(
+        (item) => item.status === "Pending"
+      );
 
-        setComplaints(pendingOnly);
-      }
-    );
+      setComplaints(pendingOnly);
+    });
 
     return () => unsubscribe();
   }, []);
 
   const updateStatus = async (complaint, newStatus) => {
     try {
-
       const snapshot = await getDocs(collection(db, "complaints"));
 
       const updates = [];
@@ -43,29 +49,32 @@ function Admin() {
         const data = docItem.data();
 
         if (data.location && complaint.location) {
+          const dLat = Math.abs(
+            data.location.latitude - complaint.location.latitude
+          );
 
-          const dLat = Math.abs(data.location.latitude - complaint.location.latitude);
-          const dLng = Math.abs(data.location.longitude - complaint.location.longitude);
+          const dLng = Math.abs(
+            data.location.longitude - complaint.location.longitude
+          );
 
           const sameIssue = data.issueType === complaint.issueType;
 
           if (dLat < 0.0001 && dLng < 0.0001 && sameIssue) {
             updates.push(
               updateDoc(doc(db, "complaints", docItem.id), {
-                status: newStatus
-             })
+                status: newStatus,
+              })
             );
           }
         }
       });
 
       await Promise.all(updates);
-
     } catch (error) {
       console.error("Error updating grouped complaints:", error);
     }
   };
-  
+
   const handleUserDiscipline = async (userId) => {
     const userRef = doc(db, "users", userId);
     const userSnap = await getDoc(userRef);
@@ -86,6 +95,7 @@ function Admin() {
       toast.error("User has been blocked.");
     }
   };
+
   const countNearbyComplaints = (lat, lng, issueType, allComplaints) => {
     let count = 0;
 
@@ -96,13 +106,12 @@ function Admin() {
 
         if (dLat < 0.0001 && dLng < 0.0001) {
           count++;
-       }
+        }
       }
     });
 
     return count;
   };
-
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-gray-900 to-black text-white p-8">
@@ -111,7 +120,6 @@ function Admin() {
         Admin - Waiting Complaints
       </h1>
 
-      {/* Navigation Buttons */}
       <div className="flex justify-center gap-4 mb-10">
         <button
           onClick={() => navigate("/admin/inprogress")}
@@ -148,7 +156,7 @@ function Admin() {
             >
               <div className="grid md:grid-cols-2 gap-6">
 
-                {/* Left Side - Details */}
+                {/* Left Side */}
                 <div>
                   <p className="mb-2">
                     <span className="font-semibold">Issue:</span> {item.issueType}
@@ -163,7 +171,6 @@ function Admin() {
                     )}
                   </p>
 
-
                   <p className="mb-2">
                     <span className="font-semibold">Description:</span> {item.description}
                   </p>
@@ -172,7 +179,7 @@ function Admin() {
                     <span className="font-semibold">User:</span> {item.username}
                   </p>
 
-                  <p className="mb-2">  
+                  <p className="mb-2">
                     <span className="font-semibold">Phone:</span> {item.phone}
                   </p>
 
@@ -185,14 +192,28 @@ function Admin() {
                   </p>
 
                   {item.location && (
-                    <p className="text-sm text-gray-400">
-                      📍 {item.location.latitude?.toFixed(5)},{" "}
-                      {item.location.longitude?.toFixed(5)}
-                    </p>
+                    <div>
+                      <p className="text-sm text-gray-400">
+                        📍 {item.location.latitude?.toFixed(5)},{" "}
+                        {item.location.longitude?.toFixed(5)}
+                      </p>
+
+                      <button
+                        onClick={() =>
+                          window.open(
+                            `https://www.google.com/maps?q=${item.location.latitude},${item.location.longitude}`,
+                            "_blank"
+                          )
+                        }
+                        className="mt-2 bg-blue-500 hover:bg-blue-600 px-4 py-1 rounded text-sm"
+                      >
+                        Open in Google Maps
+                      </button>
+                    </div>
                   )}
                 </div>
 
-                {/* Right Side - Photo */}
+                {/* Right Side Photo */}
                 {item.photo && (
                   <div className="flex justify-center items-center">
                     <img
@@ -205,8 +226,8 @@ function Admin() {
 
               </div>
 
-              {/* Action Buttons */}
               <div className="flex gap-4 mt-6 justify-center">
+
                 <button
                   onClick={() => updateStatus(item, "In Progress")}
                   className="bg-yellow-500 hover:bg-yellow-600 px-5 py-2 rounded-lg transition"
@@ -222,17 +243,19 @@ function Admin() {
                 </button>
 
                 <button
-                  onClick={() => updateStatus(item.id, "Rejected")}
+                  onClick={() => updateStatus(item, "Rejected")}
                   className="bg-red-600 hover:bg-red-700 px-5 py-2 rounded-lg transition"
                 >
                   Reject
                 </button>
+
                 <button
                   onClick={() => handleUserDiscipline(item.userId)}
                   className="bg-yellow-600 hover:bg-yellow-700 px-5 py-2 rounded-lg transition"
                 >
                   Discipline User
                 </button>
+
               </div>
             </div>
           ))}

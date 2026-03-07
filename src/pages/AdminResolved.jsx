@@ -63,9 +63,23 @@ function AdminResolved() {
                   <p><b>Time:</b> {item.time}</p>
 
                   {item.location && (
-                    <p className="text-sm text-gray-300">
-                      📍 {item.location.latitude?.toFixed(5)}, {item.location.longitude?.toFixed(5)}
-                    </p>
+                    <div>
+                      <p className="text-sm text-gray-300">
+                        📍 {item.location.latitude?.toFixed(5)}, {item.location.longitude?.toFixed(5)}
+                      </p>
+
+                      <button
+                        onClick={() =>
+                          window.open(
+                            `https://www.google.com/maps?q=${item.location.latitude},${item.location.longitude}`,
+                            "_blank"
+                          )
+                        }
+                        className="mt-2 bg-blue-500 hover:bg-blue-600 px-4 py-1 rounded text-sm"
+                      >
+                        Open in Google Maps
+                      </button>
+                    </div>
                   )}
                 </div>
 

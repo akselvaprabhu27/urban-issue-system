@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { db } from "../config/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc, getDocs } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 
 function AdminInProgress() {
@@ -24,10 +24,37 @@ function AdminInProgress() {
     return () => unsubscribe();
   }, []);
 
-  const updateStatus = async (id, newStatus) => {
-    await updateDoc(doc(db, "complaints", id), {
-      status: newStatus,
-    });
+  const updateStatus = async (complaint, newStatus) => {
+    try {
+
+      const snapshot = await getDocs(collection(db, "complaints"));
+
+      snapshot.forEach(async (docItem) => {
+
+        const data = docItem.data();
+
+        if (data.location && complaint.location) {
+
+          const dLat = Math.abs(data.location.latitude - complaint.location.latitude);
+          const dLng = Math.abs(data.location.longitude - complaint.location.longitude);
+
+          const sameIssue = data.issueType === complaint.issueType;
+
+          if (dLat < 0.0001 && dLng < 0.0001 && sameIssue) {
+
+            await updateDoc(doc(db, "complaints", docItem.id), {
+              status: newStatus
+            });
+
+          }
+
+        }
+
+      });
+
+    } catch (error) {
+      console.error("Grouped status update error:", error);
+    }
   };
 
   return (
@@ -69,9 +96,23 @@ function AdminInProgress() {
                   <p><b>Time:</b> {item.time}</p>
 
                   {item.location && (
-                    <p className="text-sm text-gray-300">
-                      📍 {item.location.latitude?.toFixed(5)}, {item.location.longitude?.toFixed(5)}
-                    </p>
+                    <div>
+                      <p className="text-sm text-gray-300">
+                        📍 {item.location.latitude?.toFixed(5)}, {item.location.longitude?.toFixed(5)}
+                      </p>
+
+                      <button
+                        onClick={() =>
+                          window.open(
+                            `https://www.google.com/maps?q=${item.location.latitude},${item.location.longitude}`,
+                            "_blank"
+                          )
+                        }
+                        className="mt-2 bg-blue-500 hover:bg-blue-600 px-4 py-1 rounded text-sm"
+                      >
+                        Open in Google Maps
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -89,14 +130,14 @@ function AdminInProgress() {
 
               <div className="flex gap-4 mt-6 justify-center">
                 <button
-                  onClick={() => updateStatus(item.id, "Resolved")}
+                  onClick={() => updateStatus(item, "Resolved")}
                   className="bg-green-600 hover:bg-green-700 px-5 py-2 rounded-lg"
                 >
                   Mark Resolved
                 </button>
 
                 <button
-                  onClick={() => updateStatus(item.id, "Rejected")}
+                  onClick={() => updateStatus(item, "Rejected")}
                   className="bg-red-600 hover:bg-red-700 px-5 py-2 rounded-lg"
                 >
                   Reject
