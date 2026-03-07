@@ -64,7 +64,7 @@ function AdminResolved() {
 
                   {item.location && (
                     <p className="text-sm text-gray-300">
-                      📍 {item.location.latitude?.toFixed(4)}, {item.location.longitude?.toFixed(4)}
+                      📍 {item.location.latitude?.toFixed(5)}, {item.location.longitude?.toFixed(5)}
                     </p>
                   )}
                 </div>
