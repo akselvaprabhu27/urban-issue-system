@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { db } from "../config/firebase";
-import { collection, onSnapshot, doc, updateDoc, query, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc,getDocs, query, orderBy } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { getDoc } from "firebase/firestore";
 import toast from "react-hot-toast";
