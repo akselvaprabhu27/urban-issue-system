@@ -17,29 +17,23 @@ function Complaint() {
   const [issueType, setIssueType] = useState("");
   const [description, setDescription] = useState("");
 
- useEffect(() => {
-    if ("geolocation" in navigator) {
+  const getCurrentLocation = () => {
+    return new Promise((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setLocation({
+          resolve({
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
           });
         },
-        (error) => {
-          console.error("Location error:", error);
-          alert("Location permission required to submit complaint.");
-        },
+        (error) => reject(error),
         {
           enableHighAccuracy: true,
           timeout: 10000,
-          maximumAge: 0,
         }
       );
-    } else {
-      alert("Geolocation is not supported by this browser.");
-    }
-  }, []);
+    });
+  };
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -60,11 +54,19 @@ function Complaint() {
     }
   };
 
-  const capturePhoto = () => {
+  const capturePhoto = async () => {
     const context = canvasRef.current.getContext("2d");
     context.drawImage(videoRef.current, 0, 0, 300, 200);
     const imageData = canvasRef.current.toDataURL("image/png");
     setPhoto(imageData);
+
+    try {
+      const currentLocation = await getCurrentLocation();
+      setLocation(currentLocation);
+    } catch (error) {
+      console.error("Location error:", error);
+      alert("Unable to fetch location. Please enable GPS.");
+    }
   };
 
   const stopCamera = () => {
@@ -220,7 +222,7 @@ function Complaint() {
             <img src={photo} alt="Captured" className="rounded-xl mx-auto mt-4" />
           )}
         </div>
-        
+
         {location && (
           <div className="mt-3 text-sm text-gray-300 text-center">
             📍 {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
