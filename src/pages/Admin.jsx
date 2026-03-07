@@ -32,15 +32,40 @@ function Admin() {
     return () => unsubscribe();
   }, []);
 
-  const updateStatus = async (id, newStatus) => {
+  const updateStatus = async (complaint, newStatus) => {
     try {
-      await updateDoc(doc(db, "complaints", id), {
-        status: newStatus,
+
+      const snapshot = await getDocs(collection(db, "complaints"));
+
+      const updates = [];
+
+      snapshot.forEach((docItem) => {
+        const data = docItem.data();
+
+        if (data.location && complaint.location) {
+
+          const dLat = Math.abs(data.location.latitude - complaint.location.latitude);
+          const dLng = Math.abs(data.location.longitude - complaint.location.longitude);
+
+          const sameIssue = data.issueType === complaint.issueType;
+
+          if (dLat < 0.0001 && dLng < 0.0001 && sameIssue) {
+            updates.push(
+              updateDoc(doc(db, "complaints", docItem.id), {
+                status: newStatus
+             })
+            );
+          }
+        }
       });
+
+      await Promise.all(updates);
+
     } catch (error) {
-      console.error("Error updating status:", error);
+      console.error("Error updating grouped complaints:", error);
     }
   };
+  
   const handleUserDiscipline = async (userId) => {
     const userRef = doc(db, "users", userId);
     const userSnap = await getDoc(userRef);
@@ -183,14 +208,14 @@ function Admin() {
               {/* Action Buttons */}
               <div className="flex gap-4 mt-6 justify-center">
                 <button
-                  onClick={() => updateStatus(item.id, "In Progress")}
+                  onClick={() => updateStatus(item, "In Progress")}
                   className="bg-yellow-500 hover:bg-yellow-600 px-5 py-2 rounded-lg transition"
                 >
                   In Progress
                 </button>
 
                 <button
-                  onClick={() => updateStatus(item.id, "Resolved")}
+                  onClick={() => updateStatus(item, "Resolved")}
                   className="bg-green-600 hover:bg-green-700 px-5 py-2 rounded-lg transition"
                 >
                   Resolved
