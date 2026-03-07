@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../config/firebase";
-import { collection, addDoc, doc, getDoc } from "firebase/firestore";
+import { collection, addDoc, doc, getDoc, getDocs } from "firebase/firestore";
 import toast from "react-hot-toast";
 
 function Complaint() {
@@ -16,6 +16,27 @@ function Complaint() {
   const [location, setLocation] = useState(null);
   const [issueType, setIssueType] = useState("");
   const [description, setDescription] = useState("");
+
+  const isDuplicateComplaint = async (lat, lng) => {
+    const snapshot = await getDocs(collection(db, "complaints"));
+
+    let duplicateFound = false;
+
+    snapshot.forEach((docItem) => {
+      const data = docItem.data();
+
+      if (data.location) {
+        const dLat = Math.abs(data.location.latitude - lat);
+        const dLng = Math.abs(data.location.longitude - lng);
+
+        if (dLat < 0.0001 && dLng < 0.0001) {
+          duplicateFound = true;
+        }
+      }
+    });
+
+    return duplicateFound;
+  };
 
   const getCurrentLocation = () => {
     return new Promise((resolve, reject) => {
@@ -118,6 +139,18 @@ function Complaint() {
           setSubmitted(false);
           return;
         }
+
+        const duplicate = await isDuplicateComplaint(
+          location.latitude,
+          location.longitude
+        );
+
+        if (duplicate) {
+          alert(
+            "A complaint for this location already exists. Authorities are already aware of this issue."
+        );
+        return;
+      }
 
         // 📝 Prepare complaint data
         const complaintData = {
