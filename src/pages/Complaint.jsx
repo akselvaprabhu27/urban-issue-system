@@ -34,9 +34,17 @@ function Complaint() {
   };
 
   const startCamera = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    videoRef.current.srcObject = stream;
-    setCameraOn(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" } // back camera
+      });
+
+      videoRef.current.srcObject = stream;
+      setCameraOn(true);
+    } catch (error) {
+      console.error("Camera error:", error);
+      alert("Unable to access camera");
+    }
   };
 
   const capturePhoto = () => {
