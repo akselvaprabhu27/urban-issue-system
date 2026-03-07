@@ -1,0 +1,194 @@
+import { useEffect, useState } from "react";
+import { db } from "../config/firebase";
+import { collection, onSnapshot, doc, updateDoc, query, orderBy } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
+import { getDoc } from "firebase/firestore";
+import toast from "react-hot-toast";
+
+function Admin() {
+  const [complaints, setComplaints] = useState([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const q = query(
+      collection(db, "complaints"),
+      orderBy("timestamp", "asc")
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const data = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        const pendingOnly = data.filter(
+          (item) => item.status === "Pending"
+        );
+
+        setComplaints(pendingOnly);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  const updateStatus = async (id, newStatus) => {
+    try {
+      await updateDoc(doc(db, "complaints", id), {
+        status: newStatus,
+      });
+    } catch (error) {
+      console.error("Error updating status:", error);
+    }
+  };
+  const handleUserDiscipline = async (userId) => {
+    const userRef = doc(db, "users", userId);
+    const userSnap = await getDoc(userRef);
+    const userData = userSnap.data();
+
+    if (!userData) return;
+
+    const warnings = userData.warnings || 0;
+
+    if (warnings === 0) {
+      await updateDoc(userRef, { warnings: 1 });
+      toast("First warning issued.");
+    } else if (warnings === 1) {
+      await updateDoc(userRef, { warnings: 2 });
+      toast("Second warning issued.");
+    } else if (warnings >= 2) {
+      await updateDoc(userRef, { blocked: true });
+      toast.error("User has been blocked.");
+    }
+  };
+
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-gray-900 to-black text-white p-8">
+
+      <h1 className="text-4xl font-bold text-center mb-8">
+        Admin - Waiting Complaints
+      </h1>
+
+      {/* Navigation Buttons */}
+      <div className="flex justify-center gap-4 mb-10">
+        <button
+          onClick={() => navigate("/admin/inprogress")}
+          className="bg-yellow-500 hover:bg-yellow-600 px-5 py-2 rounded-lg transition"
+        >
+          In Progress
+        </button>
+
+        <button
+          onClick={() => navigate("/admin/resolved")}
+          className="bg-green-600 hover:bg-green-700 px-5 py-2 rounded-lg transition"
+        >
+          Resolved
+        </button>
+
+        <button
+          onClick={() => navigate("/admin/rejected")}
+          className="bg-red-600 hover:bg-red-700 px-5 py-2 rounded-lg transition"
+        >
+          Rejected
+        </button>
+      </div>
+
+      {complaints.length === 0 ? (
+        <p className="text-center text-gray-400">
+          No pending complaints.
+        </p>
+      ) : (
+        <div className="grid gap-8 max-w-4xl mx-auto">
+          {complaints.map((item) => (
+            <div
+              key={item.id}
+              className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/20 shadow-xl"
+            >
+              <div className="grid md:grid-cols-2 gap-6">
+
+                {/* Left Side - Details */}
+                <div>
+                  <p className="mb-2">
+                    <span className="font-semibold">Issue:</span> {item.issueType}
+                  </p>
+
+                  <p className="mb-2">
+                    <span className="font-semibold">Description:</span> {item.description}
+                  </p>
+
+                  <p className="mb-2">
+                    <span className="font-semibold">User:</span> {item.username}
+                  </p>
+
+                  <p className="mb-2">  
+                    <span className="font-semibold">Phone:</span> {item.phone}
+                  </p>
+
+                  <p className="mb-2">
+                    <span className="font-semibold">Date:</span> {item.date}
+                  </p>
+
+                  <p className="mb-2">
+                    <span className="font-semibold">Time:</span> {item.time}
+                  </p>
+
+                  {item.location && (
+                    <p className="text-sm text-gray-400">
+                      📍 {item.location.latitude?.toFixed(4)},{" "}
+                      {item.location.longitude?.toFixed(4)}
+                    </p>
+                  )}
+                </div>
+
+                {/* Right Side - Photo */}
+                {item.photo && (
+                  <div className="flex justify-center items-center">
+                    <img
+                      src={item.photo}
+                      alt="Complaint"
+                      className="rounded-xl w-full max-w-xs object-cover shadow-lg"
+                    />
+                  </div>
+                )}
+
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-4 mt-6 justify-center">
+                <button
+                  onClick={() => updateStatus(item.id, "In Progress")}
+                  className="bg-yellow-500 hover:bg-yellow-600 px-5 py-2 rounded-lg transition"
+                >
+                  In Progress
+                </button>
+
+                <button
+                  onClick={() => updateStatus(item.id, "Resolved")}
+                  className="bg-green-600 hover:bg-green-700 px-5 py-2 rounded-lg transition"
+                >
+                  Resolved
+                </button>
+
+                <button
+                  onClick={() => updateStatus(item.id, "Rejected")}
+                  className="bg-red-600 hover:bg-red-700 px-5 py-2 rounded-lg transition"
+                >
+                  Reject
+                </button>
+                <button
+                  onClick={() => handleUserDiscipline(item.userId)}
+                  className="bg-yellow-600 hover:bg-yellow-700 px-5 py-2 rounded-lg transition"
+                >
+                  Discipline User
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default Admin;
