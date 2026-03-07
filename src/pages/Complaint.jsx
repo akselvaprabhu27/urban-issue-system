@@ -17,15 +17,28 @@ function Complaint() {
   const [issueType, setIssueType] = useState("");
   const [description, setDescription] = useState("");
 
-  useEffect(() => {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
-      }
-    );
+ useEffect(() => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.error("Location error:", error);
+          alert("Location permission required to submit complaint.");
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        }
+      );
+    } else {
+      alert("Geolocation is not supported by this browser.");
+    }
   }, []);
 
   const handleLogout = async () => {
@@ -63,8 +76,13 @@ function Complaint() {
   };
 
   const handleSubmit = async () => {
-    if (!issueType || !description || !photo || !location) {
-      toast.error("Please complete all fields and capture photo.");
+    if (!issueType || !description || !photo) {
+      toast("Please complete all required fields.");
+      return;
+    }
+
+    if (!location) {
+      toast("Waiting for location. Please allow GPS and try again.");
       return;
     }
 
@@ -202,6 +220,12 @@ function Complaint() {
             <img src={photo} alt="Captured" className="rounded-xl mx-auto mt-4" />
           )}
         </div>
+        
+        {location && (
+          <div className="mt-3 text-sm text-gray-300 text-center">
+            📍 {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
+          </div>
+        )}
 
         <button
           onClick={handleSubmit}
