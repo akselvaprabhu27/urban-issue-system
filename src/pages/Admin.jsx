@@ -61,6 +61,23 @@ function Admin() {
       toast.error("User has been blocked.");
     }
   };
+  const countNearbyComplaints = (lat, lng, allComplaints) => {
+    let count = 0;
+
+    allComplaints.forEach((item) => {
+      if (item.location) {
+        const dLat = Math.abs(item.location.latitude - lat);
+        const dLng = Math.abs(item.location.longitude - lng);
+
+        if (dLat < 0.0001 && dLng < 0.0001) {
+          count++;
+        }
+      }
+    });
+
+
+    return count;
+  };
 
 
   return (
@@ -112,6 +129,15 @@ function Admin() {
                   <p className="mb-2">
                     <span className="font-semibold">Issue:</span> {item.issueType}
                   </p>
+
+                  <p className="text-sm text-yellow-400">
+                    Reports from nearby users: {countNearbyComplaints(
+                      item.location?.latitude,
+                      item.location?.longitude,
+                      complaints
+                    )}
+                  </p>
+
 
                   <p className="mb-2">
                     <span className="font-semibold">Description:</span> {item.description}
