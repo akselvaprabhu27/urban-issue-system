@@ -16,29 +16,62 @@ function Signup() {
   const handleSignup = async (e) => {
     e.preventDefault();
 
+    // OTP check
     if (otp !== "123456") {
       toast.error("Invalid OTP", { icon: "⚠️" });
+      return;
+    }
+
+    // phone validation
+    if (phone.length < 10) {
+      toast.error("Enter valid phone number", { icon: "⚠️" });
+      return;
+    }
+
+    // password validation
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters", { icon: "⚠️" });
       return;
     }
 
     const email = phone + "@urban.com";
 
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
 
-      await setDoc(doc(db, "users", auth.currentUser.uid), {
-        username,
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
+      const user = userCredential.user;
+
+      await setDoc(doc(db, "users", user.uid), {
+        username: username.trim(),
         warnings: 0,
         blocked: false,
-        phone,
+        phone: phone.trim(),
         createdAt: new Date(),
       });
 
       toast.success("Account created successfully!", { icon: "✔️" });
+
       navigate("/login");
+
     } catch (error) {
-      toast.error("Error creating account", { icon: "⚠️" });
+
+      console.log(error);
+
+      if (error.code === "auth/email-already-in-use") {
+        toast.error("User already exists", { icon: "⚠️" });
+      }
+
+      else {
+        toast.error("Error creating account", { icon: "⚠️" });
+      }
+
     }
+
   };
 
   return (
